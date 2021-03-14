@@ -24,12 +24,6 @@
           >
             <!-- :xs="8" :sm="6" :md="4" :lg="3" :xl="1" -->
             <el-row class="header-cont" :span="24">
-              <el-col :xs="2" :lg="1" :md="1" :sm="1" :xl="1">
-                <div @click="totalCollapse" class="menu-total">
-                  <i class="el-icon-s-unfold" v-if="isCollapse"></i>
-                  <i class="el-icon-s-fold" v-else></i>
-                </div>
-              </el-col>
               <el-col :xs="10" :lg="14" :md="14" :sm="9" :xl="14">
                 <el-breadcrumb class="breadcrumb" separator-class="el-icon-arrow-right">
                   <el-breadcrumb-item
@@ -39,10 +33,16 @@
                   >
                 </el-breadcrumb>
               </el-col>
+              <el-col :xs="2" :lg="1" :md="1" :sm="1" :xl="1">
+                <div style="visibility:hidden" @click="totalCollapse" class="menu-total">
+                  <i class="el-icon-s-unfold" v-if="isCollapse"></i>
+                  <i class="el-icon-s-fold" v-else></i>
+                </div>
+              </el-col>
               <el-col :xs="12" :lg="9" :md="9" :sm="14" :xl="9">
                 <div class="fl-right right-box">
                   <Search />
-                  <Screenfull class="screenfull"></Screenfull>
+                  <Screenfull class="screenfull" :style="{cursor:'pointer'}"></Screenfull>
                   <el-dropdown>
                     <span class="header-avatar">
                       <CustomPic />
@@ -77,22 +77,24 @@
         </transition>
 
         <router-view
+          :key="route.fullPath"
           v-slot="{ Component }"
           v-loading="loadingFlag"
           element-loading-text="正在加载中"
           class="admin-box"
-          v-if="route.meta.keepAlive"
+          v-if="route.meta.keepAlive && reloadFlag"
         >
           <keep-alive>
             <component :is="Component" />
           </keep-alive>
         </router-view>
         <router-view
+          :key="route.fullPath"
           v-slot="{ Component }"
           v-loading="loadingFlag"
           element-loading-text="正在加载中"
           class="admin-box"
-          v-if="!route.meta.keepAlive"
+          v-if="!route.meta.keepAlive && reloadFlag"
         >
           <component :is="Component" />
         </router-view>
@@ -111,7 +113,7 @@ import BottomInfo from "@/view/layout/bottomInfo/bottomInfo";
 import { useStore } from "vuex";
 import CustomPic from "@/components/customPic";
 import { emitter } from "@/utils/mitt";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, getCurrentInstance } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 export default {
@@ -125,6 +127,7 @@ export default {
     CustomPic,
   },
   setup() {
+    const { ctx } = getCurrentInstance();
     const store = useStore();
     const router = useRouter();
     const route = useRoute()
@@ -134,6 +137,7 @@ export default {
     const isMobile = ref(false);
     const isShadowBg = ref(false);
     const loadingFlag = ref(false);
+    const reloadFlag = ref(true);
     const value = ref("");
     const LoginOut = () => store.dispatch("user/LoginOut");
     const userInfo = computed(() => store.getters["user/userInfo"]);
@@ -145,6 +149,12 @@ export default {
       isShadowBg.value = !isCollapse.value;
       emitter.emit("collapse", isCollapse.value);
     };
+    const reload = () => {
+      reloadFlag.value = false
+      ctx.$nextTick(()=>{
+        reloadFlag.value = true
+      })
+    }
     const toPerson = () => {
       router.push({ name: "person" });
     };
@@ -173,6 +183,9 @@ export default {
       emitter.emit("mobile", isMobile.value);
       emitter.on("showLoading", () => {
         loadingFlag.value = true;
+      });
+      emitter.on("reload", () => {
+        reload()
       });
       emitter.on("closeLoading", () => {
         loadingFlag.value = false;
@@ -213,7 +226,8 @@ export default {
       totalCollapse,
       toPerson,
       changeShadow,
-      route
+      route,
+      reloadFlag
     };
   },
 };
